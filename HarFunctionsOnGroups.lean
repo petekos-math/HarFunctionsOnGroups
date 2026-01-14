@@ -1,2 +1,2 @@
-import HarFunctionsOnGroups.Basic
+import HarFunctionsOnGroups.HarmonicPMF
 import HarFunctionsOnGroups.ChoquetDeny

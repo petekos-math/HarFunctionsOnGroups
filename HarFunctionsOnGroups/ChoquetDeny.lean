@@ -71,19 +71,59 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G] [Measurabl
     rw [hg]
     dsimp
     simp only [abs_mul_abs_self]
-    ring
-    rw [MeasureTheory.integral_add]
+    ring_nf
+    have hint1 : ∀ (x : G), MeasureTheory.Integrable (fun y => (f x)^2) μ := by
+      exact fun x ↦ MeasureTheory.integrable_const (f x ^ 2)
+    have hint2 : ∀ (x : G), MeasureTheory.Integrable (fun y => (f (x + y))^2) μ := by
+      sorry
+    have hint3 : ∀ (x : G), MeasureTheory.Integrable (fun y => -(f x * f (x + y) * 2)) μ := by sorry
+    have hint4 : ∀ (x : G),
+    MeasureTheory.Integrable (fun y => -(f x * f (x + y) * 2) + (f x)^2) μ := by
+      intro x
+      apply MeasureTheory.Integrable.add _ _
+      · exact hint3 x
+      exact hint1 x
+    rw [MeasureTheory.integral_add (hint4 x) (hint2 x)]
     simp only [add_left_inj]
-    rw [MeasureTheory.integral_add]
-    simp
-    sorry
-    sorry
-    sorry
-    sorry
-    sorry
+    rw [MeasureTheory.integral_add (hint3 x) (hint1 x)]
+    simp only [MeasureTheory.integral_const, MeasureTheory.probReal_univ,
+    smul_eq_mul, one_mul]
+    have hsimpl : ∫ (a : G), -(f x * f (x + a) * 2) ∂μ = - (f x * 2) * (f x) := by
+      calc
+        ∫ (a : G), -(f x * f (x + a) * 2) ∂μ = ∫ (a : G), (-(f x) * 2) * (f (x + a)) ∂μ := by
+          congr
+          ext a
+          ring
+        _ = (-(f x) * 2) * ∫ (a : G), f (x + a)  ∂μ :=
+          MeasureTheory.integral_const_mul ((-f x) * 2) (fun a ↦ f (x + a))
+        _ = (-(f x) * 2) * (f x) := by
+          exact Real.ext_cauchy (congrArg Real.cauchy (congrArg (HMul.hMul (-f x * 2)) (hfint x)))
+        _ = - (f x * 2) * (f x) := by ring
+    rw [hsimpl]
+    ring
   have hineq1 : ∀ (x : G), (Φ g) x ≥ g x := by sorry
-  have gpos : ∀ (x : G), g x ≥ 0 := by sorry
-  have h2 : ∀ (n : ℕ), ∀ (x : G), (Φ^[n+1] (fun (y : G) => |f y * f y|)) x - (Φ^[n] (|f * f|)) x ≥ g x := by sorry
+  have gpos : ∀ (x : G), g x ≥ 0 := by
+    intro x
+    unfold g
+    apply MeasureTheory.integral_nonneg _
+    intro x_1;
+    simp only [Pi.zero_apply, abs_mul_abs_self]
+    exact mul_self_nonneg (f x - f (x + x_1))
+  have h2 : ∀ (n : ℕ),
+  ∀ (x : G), (Φ^[n+1] (|f * f|)) x - (Φ^[n] (|f * f|)) x ≥ g x := by
+    intro n
+    induction n
+    case zero =>
+      simp only [zero_add, Function.iterate_one, Function.iterate_zero, id_eq, Pi.abs_apply,
+        Pi.mul_apply, abs_mul, abs_mul_abs_self, ge_iff_le]
+      intro x
+      rw [heq1 x]
+      rw [hΦ]; dsimp; simp
+    case succ n ih =>
+      sorry
+  use (f 0)
+  intro x
+  set a := fun (n : ℕ) => (Φ^[n] (|f * f|)) x with ha
   sorry
 
 theorem ChoquetDenyPMF {G : Type*} [CommGroup G] [TopologicalSpace G] [DiscreteTopology G]

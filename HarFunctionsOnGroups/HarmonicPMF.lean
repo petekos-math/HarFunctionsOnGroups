@@ -92,7 +92,7 @@ def iteratedConv {G : Type*} [Group G] [Countable G] (μ : PMF G) : ℕ → PMF 
 
 -- TODO: finish the proof of the fact that if a function is harmonic wrt μ and ν,
 -- it is harmonic wrt the convolution. Requires Fubini's therorem for PMF measures it seems?
-open Classical in
+/- open Classical in
 lemma harmonic_pmf_conv {G : Type*} [Group G] [Countable G] (μ ν : PMF G) (f : G → ℝ)
 (hmu : IsHarmonicFunction μ f) (hnu : IsHarmonicFunction ν f) :
 IsHarmonicFunction (pmf_conv μ ν) f := by
@@ -116,10 +116,11 @@ IsHarmonicFunction (pmf_conv μ ν) f := by
   HasSum (fun ((g, a): G × G) => ((μ a) * (ν (a⁻¹ * g))).toReal * f (x * g)) (f x) := by
     sorry
   sorry
+-/
 
 
 -- I have proven the weaker version of the above when ν = μ
-lemma harmonic_iter_conv {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G → ℝ)
+/-lemma harmonic_iter_conv {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G → ℝ)
 (hf : IsHarmonicFunction μ f): ∀ (n : ℕ), IsHarmonicFunction (iteratedConv μ n) f := by
   intro n
   induction n
@@ -131,6 +132,7 @@ lemma harmonic_iter_conv {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G
     apply harmonic_pmf_conv
     · exact hf
     exact ih
+-/
 
 lemma iterconv_gives_fullsupport {G : Type*} [Group G] [Finite G] (μ : PMF G)
 (hgen : Subsemigroup.closure μ.support = G) : ∃ (n : ℕ), (iteratedConv μ n).support = G := by sorry

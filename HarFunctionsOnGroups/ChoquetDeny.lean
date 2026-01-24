@@ -70,13 +70,34 @@ lemma fxy_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     apply Measurable.comp' hfmeas _
     apply Continuous.measurable
     exact continuous_add_left x
-  · have hdeterm : ∀ (a : G), ‖f (x + a)‖ ≤ ‖C‖ := by
-      intro a
-      simp only [Real.norm_eq_abs]
-      trans C
-      · exact hfbnd (x + a)
-      exact le_abs_self C
-    exact MeasureTheory.ae_of_all μ hdeterm
+  · apply MeasureTheory.ae_of_all μ _
+    intro a
+    simp only [Real.norm_eq_abs]
+    trans C
+    · exact hfbnd (x + a)
+    exact le_abs_self C
+
+
+lemma fxya_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+(f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
+(hfbnd : ∀ (x : G), |f x| ≤ C) :
+∀ (x a : G), MeasureTheory.Integrable (fun y => (f (x + y + a))) μ := by
+  intro x a
+  apply MeasureTheory.Integrable.mono (MeasureTheory.integrable_const (C : ℝ)) _ _
+  · apply Measurable.aestronglyMeasurable
+    apply Measurable.comp' hfmeas _
+    apply Continuous.measurable
+    exact Continuous.comp (continuous_add_right a) (continuous_add_left x)
+  · apply MeasureTheory.ae_of_all μ _
+    intro a₁
+    simp only [Real.norm_eq_abs]
+    trans C
+    · exact hfbnd (x + a₁ + a)
+    exact le_abs_self C
+
 
 lemma fxy2_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
 [SecondCountableTopology G] [MeasurableSpace G]
@@ -94,19 +115,244 @@ lemma fxy2_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
       apply Measurable.comp' hfmeas _
       apply Continuous.measurable
       exact continuous_add_left x
-  · have hdeter : ∀ (a : G), ‖f (x + a) * f (x + a)‖ ≤ ‖C * C‖ := by
-      intro a
-      simp only [norm_mul, Real.norm_eq_abs]
-      calc
-        |f (x + a)| * |f (x + a)| = |f (x + a)|^2 := Eq.symm (pow_two |f (x + a)|)
-        _ ≤ |C|^2 := by
-          rw [sq_le_sq]
-          simp only [abs_abs]
-          trans C
-          · exact hfbnd (x + a)
+  · apply MeasureTheory.ae_of_all μ _
+    intro a
+    simp only [norm_mul, Real.norm_eq_abs]
+    calc
+      |f (x + a)| * |f (x + a)| = |f (x + a)|^2 := Eq.symm (pow_two |f (x + a)|)
+      _ ≤ |C|^2 := by
+        rw [sq_le_sq]
+        simp only [abs_abs]
+        trans C
+        · exact hfbnd (x + a)
+        exact le_abs_self C
+      _ = |C| * |C| := by exact pow_two |C|
+
+lemma fxydiff_is_measurable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(f : G → ℝ) (hfmeas : Measurable f) : ∀ (x z : G),
+Measurable (fun x_1 ↦ (f (x + x_1) - f (x + x_1 + z))) := by
+  intro x z
+  apply Measurable.sub _ _
+  · apply Measurable.comp' hfmeas _
+    apply Continuous.measurable
+    exact continuous_add_left x
+  · apply Measurable.comp' hfmeas _
+    apply Continuous.measurable
+    exact Continuous.comp (continuous_add_right z) (continuous_add_left x)
+
+lemma fxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+(f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
+(hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x z : G), MeasureTheory.Integrable
+  (fun x_1 ↦ (f (x + x_1) - f (x + x_1 + z)) * (f (x + x_1) - f (x + x_1 + z))) μ := by
+  intro x z
+  apply MeasureTheory.Integrable.mono (MeasureTheory.integrable_const (4*C*C : ℝ)) _ _
+  · apply MeasureTheory.AEStronglyMeasurable.mul _ _
+    repeat
+    · apply Measurable.aestronglyMeasurable
+      exact fxydiff_is_measurable f hfmeas x z
+  · apply MeasureTheory.ae_of_all μ _
+    intro a; simp only [norm_mul, Real.norm_eq_abs, abs_mul_abs_self]
+    calc
+      (f (x + a) - f (x + a + z)) * (f (x + a) - f (x + a + z))
+        = (f (x + a) - f (x + a + z))^2 := by
+        exact Eq.symm (pow_two (f (x + a) - f (x + a + z)))
+      _ ≤ (|f (x + a)| + |f (x + a + z)|)^2 := by
+        rw [sq_le_sq]
+        trans |f (x + a)| + |f (x + a + z)|
+        · exact abs_sub (f (x + a)) (f (x + a + z))
+        exact le_abs_self (|f (x + a)| + |f (x + a + z)|)
+      _ ≤ (2 * |C|)^2 := by
+        rw [sq_le_sq, abs_of_nonneg];
+        simp only [abs_mul, Nat.abs_ofNat, abs_abs]
+        trans C + C
+        · exact add_le_add (hfbnd (x + a)) (hfbnd (x + a + z))
+        trans |C| + |C|
+        · ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
           exact le_abs_self C
-        _ = |C| * |C| := by exact pow_two |C|
-    exact MeasureTheory.ae_of_all μ hdeter
+        ring; rfl
+        exact add_nonneg (abs_nonneg (f (x +a ))) (abs_nonneg (f (x + a + z)))
+      _ = 4 * |C| * |C| := by ring
+      _ = |4| * |C| * |C| := by simp only [Nat.abs_ofNat]
+
+lemma intoffxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+(f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
+(hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x : G), MeasureTheory.Integrable
+  (fun x_1 ↦ (∫ (z : G), (f (x + z) - f (x + z + x_1)) * (f (x + z) - f (x + z + x_1)) ∂μ)) μ := by
+  intro x
+  apply MeasureTheory.Integrable.mono (MeasureTheory.integrable_const (4*C*C : ℝ)) _ _
+  · have interm : MeasureTheory.AEStronglyMeasurable
+      (fun (z : G × G) => (f (x + z.2) - f (x + z.2 + z.1))*(f (x + z.2) - f (x + z.2 + z.1)))
+        (μ.prod μ):= by
+      apply MeasureTheory.AEStronglyMeasurable.mul _ _
+      repeat
+      · apply MeasureTheory.AEStronglyMeasurable.sub _ _
+        · apply Measurable.aestronglyMeasurable
+          apply Measurable.comp' hfmeas _
+          apply Continuous.measurable
+          apply Continuous.comp (continuous_add_left x) continuous_snd
+        · apply Measurable.aestronglyMeasurable
+          apply Measurable.comp' hfmeas _
+          apply Continuous.measurable
+          simp only [add_assoc]
+          apply Continuous.comp (continuous_add_left x) _
+          apply Continuous.add (continuous_snd) (continuous_fst)
+    apply MeasureTheory.AEStronglyMeasurable.integral_prod_right' interm
+  · apply MeasureTheory.ae_of_all μ _
+    intro a
+    simp only [Real.norm_eq_abs, norm_mul]
+    rw [abs_le]
+    constructor
+    · calc
+        -(|4| * |C| * |C|) = -(4 * |C| * |C|) := by simp
+        _ = - (∫ (z : G), (4 * |C| * |C|) ∂ μ) := by
+          rw [MeasureTheory.integral_const (4 * |C| * |C|)]
+          simp only [MeasureTheory.probReal_univ, smul_eq_mul, one_mul]
+        _ = (∫ (z : G), -(4 * |C| * |C|) ∂ μ) := by
+          rw [MeasureTheory.integral_neg _]
+        _ ≤ ∫ (z : G), (f (x + z) - f (x + z + a)) * (f (x + z) - f (x + z + a)) ∂μ := by
+          apply MeasureTheory.integral_mono
+            (MeasureTheory.integrable_const (-(4 * |C| * |C|) : ℝ)) _
+          · intro y; dsimp
+            rw [neg_le]
+            trans (2 * |C|) * (2 * |C|)
+            · calc
+                -((f (x + y) - f (x + y + a)) * (f (x + y) - f (x + y + a))) =
+                 - (f (x + y + a) - f (x + y))^2 := by ring
+                _ ≤ (f (x + y + a) - f (x + y))^2 := by
+                  simp only [neg_le_self_iff]
+                  exact sq_nonneg (f (x + y + a) - f (x + y))
+                _ ≤ (2 * |C|)^2 := by
+                  rw [sq_le_sq]
+                  simp only [abs_mul, Nat.abs_ofNat, abs_abs]
+                  trans |f (x + y + a)| + |f (x + y)|
+                  · exact abs_sub (f (x + y + a)) (f (x + y))
+                  trans C + C
+                  · exact add_le_add (hfbnd (x + y + a)) (hfbnd (x + y))
+                  ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀]
+                  exact le_abs_self C
+                _ = (2 * |C|) * (2 * |C|) := pow_two (2 * |C|)
+            ring; rfl
+          · exact fxydiffprod_is_integrable μ f hfmeas C hfbnd x a
+    · calc
+        ∫ (z : G), (f (x + z) - f (x + z + a)) * (f (x + z) - f (x + z + a)) ∂μ ≤
+          (∫ (z : G), (4 * |C| * |C|) ∂ μ) := by
+          apply MeasureTheory.integral_mono _
+            (MeasureTheory.integrable_const (4 * |C| * |C|))
+          · intro y; dsimp
+            calc
+              (f (x + y) - f (x + y + a)) * (f (x + y) - f (x + y + a))
+                = (f (x + y) - f (x + y + a))^2 := by
+                exact Eq.symm (pow_two (f (x + y) - f (x + y + a)))
+              _ ≤ (|f (x + y)| + |f (x + y + a)|)^2 := by
+                rw [sq_le_sq]
+                trans |f (x + y)| + |f (x + y + a)|
+                · exact abs_sub (f (x + y)) (f (x + y + a))
+                exact le_abs_self (|f (x + y)| + |f (x + y + a)|)
+              _ ≤ (2 * |C|)^2 := by
+                rw [sq_le_sq, abs_of_nonneg];
+                simp only [abs_mul, Nat.abs_ofNat, abs_abs]
+                trans C + C
+                · exact add_le_add (hfbnd (x + y)) (hfbnd (x + y + a))
+                trans |C| + |C|
+                · ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
+                  exact le_abs_self C
+                ring; rfl
+                exact add_nonneg (abs_nonneg (f (x + y))) (abs_nonneg (f (x + y + a)))
+              _ = 4 * |C| * |C| := by ring
+          · exact fxydiffprod_is_integrable μ f hfmeas C hfbnd x a
+        _ = 4 * |C| * |C| := by
+          rw [MeasureTheory.integral_const (4 * |C| * |C|)]
+          simp only [MeasureTheory.probReal_univ, smul_eq_mul, one_mul]
+        _ = |4| * |C| * |C| := by simp
+
+lemma intoffxydiffsqis_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+(f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
+(hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x : G), MeasureTheory.Integrable
+  (fun x_1 ↦ ((∫ (z : G),
+    (f (x + z) - f (x + z + x_1)) ∂ μ) * ∫ (z : G), (f (x + z) - f (x + z + x_1)) ∂μ)) μ := by
+  intro x
+  apply MeasureTheory.Integrable.mono (MeasureTheory.integrable_const (4*C*C : ℝ)) _ _
+  · apply MeasureTheory.AEStronglyMeasurable.mul _ _
+    repeat
+    · have interm : MeasureTheory.AEStronglyMeasurable
+        (fun (z : G × G) => f (x + z.2) - f (x + z.2 + z.1)) (μ.prod μ):= by
+        apply MeasureTheory.AEStronglyMeasurable.sub _ _
+        · apply Measurable.aestronglyMeasurable
+          apply Measurable.comp' hfmeas _
+          apply Continuous.measurable
+          apply Continuous.comp (continuous_add_left x) continuous_snd
+        · apply Measurable.aestronglyMeasurable
+          apply Measurable.comp' hfmeas _
+          apply Continuous.measurable
+          simp only [add_assoc]
+          apply Continuous.comp (continuous_add_left x) _
+          apply Continuous.add (continuous_snd) (continuous_fst)
+      apply MeasureTheory.AEStronglyMeasurable.integral_prod_right' interm
+  · apply MeasureTheory.ae_of_all (μ) _
+    intro a
+    simp only [norm_mul, Real.norm_eq_abs, abs_mul_abs_self]
+    calc
+      (∫ (z : G), f (x + z) - f (x + z + a) ∂μ) * (∫ (z : G), f (x + z) - f (x + z + a) ∂μ) =
+      (∫ (z : G), f (x + z) - f (x + z + a) ∂μ)^2 := by
+        simp only [sq]
+      _ ≤ (∫ (z : G), 2 * |C| ∂μ)^2 := by
+        rw [sq_le_sq]
+        rw [abs_le]
+        constructor
+        · rw [abs_of_nonneg (by rw [MeasureTheory.integral_const (2 * |C|)]; simp)]
+          rw [← MeasureTheory.integral_neg]
+          apply MeasureTheory.integral_mono (MeasureTheory.integrable_const (-(2*|C|) : ℝ))
+          · exact MeasureTheory.Integrable.sub
+              (fxy_is_integrable μ f hfmeas C hfbnd x)
+              (fxya_is_integrable μ f hfmeas C hfbnd x a)
+          · intro y; dsimp
+            calc
+              -(2*|C|) ≤ (-C) + (-C) := by
+                ring; simp only [neg_le_neg_iff, Nat.ofNat_pos, mul_le_mul_iff_left₀];
+                exact le_abs_self C
+              _ ≤ -|f (x + y)| - |f (x + y + a)| := by
+                apply add_le_add
+                · rw [neg_le]
+                  simp only [neg_neg]; exact hfbnd (x + y)
+                · rw [neg_le]; simp only [neg_neg]
+                  exact hfbnd (x + y + a)
+              _ ≤ f (x + y) - f (x + y + a) := by
+                apply add_le_add
+                · rw [neg_le]; exact neg_le_abs (f (x + y))
+                · rw [neg_le]; simp only [neg_neg]; exact le_abs_self (f (x + y + a))
+        · rw [abs_of_nonneg (by rw [MeasureTheory.integral_const (2 * |C|)]; simp)]
+          apply MeasureTheory.integral_mono _ (MeasureTheory.integrable_const (2*|C| : ℝ))
+          · intro y; dsimp
+            calc
+              f (x + y) - f (x + y + a) ≤ |f (x + y)| + |f (x + y + a)| := by
+                exact add_le_add (le_abs_self (f (x + y))) (neg_le_abs (f (x + y + a)))
+              _ ≤ C + C := by
+                exact add_le_add (hfbnd (x + y)) (hfbnd (x + y + a))
+              _ ≤ |C| + |C| := by
+                ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
+                exact le_abs_self C
+              _ = 2 * |C| := by ring
+          · exact MeasureTheory.Integrable.sub (fxy_is_integrable μ f hfmeas C hfbnd x)
+              (fxya_is_integrable μ f hfmeas C hfbnd x a)
+      _ = (2 * |C|)^2 := by
+        congr
+        rw [MeasureTheory.integral_const (2 * |C|)]
+        simp only [MeasureTheory.probReal_univ, smul_eq_mul, one_mul]
+      _ = 4 * |C| * |C| := by ring
+      _ = |4| * |C| * |C| := by
+        simp only [Nat.abs_ofNat]
+
 
 
 lemma shift_operator_preserves_meas {G : Type*} [AddCommGroup G] [TopologicalSpace G]
@@ -168,6 +414,34 @@ lemma shift_operator_is_monotone {G : Type*} [AddCommGroup G] [TopologicalSpace 
   · exact fxy_is_integrable μ f₂ hf₂meas C₂ hf₂bndC x
   · exact Pi.le_def.mpr fun i ↦ hge (x + i)
 
+lemma gismeasurable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+(f : G → ℝ) (hfmeas : Measurable f) :
+Measurable (fun x ↦ ∫ (y : G), (f x - f (x + y)) * (f x - f (x + y)) ∂μ) := by
+  have interm : MeasureTheory.StronglyMeasurable
+    (fun (z : G × G) => (f (z.1) - f (z.1 + z.2)) * (f (z.1) - f (z.1 + z.2))):= by
+    apply MeasureTheory.StronglyMeasurable.mul _ _
+    · apply Measurable.stronglyMeasurable
+      apply Measurable.sub
+      · apply Measurable.comp' hfmeas _
+        apply Continuous.measurable
+        exact continuous_fst
+      · apply Measurable.comp' hfmeas _
+        apply Continuous.measurable
+        exact Continuous.add (continuous_fst) (continuous_snd)
+    · apply Measurable.stronglyMeasurable
+      apply Measurable.sub
+      · apply Measurable.comp' hfmeas _
+        apply Continuous.measurable
+        exact continuous_fst
+      · apply Measurable.comp' hfmeas _
+        apply Continuous.measurable
+        exact Continuous.add (continuous_fst) (continuous_snd)
+  exact stronglyMeasurable_iff_measurable.mp
+    (MeasureTheory.StronglyMeasurable.integral_prod_right' interm)
+
 theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
 [SecondCountableTopology G] [MeasurableSpace G]
 [BorelSpace G] [IsTopologicalAddGroup G]
@@ -203,9 +477,7 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     have hint4 : ∀ (x : G),
     MeasureTheory.Integrable (fun y => -(f x * f (x + y) * 2) + (f x)^2) μ := by
       intro x
-      apply MeasureTheory.Integrable.add _ _
-      · exact hint3 x
-      exact hint1 x
+      exact MeasureTheory.Integrable.add (hint3 x) (hint1 x)
     rw [MeasureTheory.integral_add (hint4 x) (hint2 x)]
     simp only [add_left_inj]
     rw [MeasureTheory.integral_add (hint3 x) (hint1 x)]
@@ -219,8 +491,8 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
           ring
         _ = (-(f x) * 2) * ∫ (a : G), f (x + a)  ∂μ :=
           MeasureTheory.integral_const_mul ((-f x) * 2) (fun a ↦ f (x + a))
-        _ = (-(f x) * 2) * (f x) := by
-          exact Real.ext_cauchy (congrArg Real.cauchy (congrArg (HMul.hMul (-f x * 2)) (hfint x)))
+        _ = (-(f x) * 2) * (f x) :=
+          Real.ext_cauchy (congrArg Real.cauchy (congrArg (HMul.hMul (-f x * 2)) (hfint x)))
         _ = - (f x * 2) * (f x) := by ring
     rw [hsimpl]
     ring
@@ -249,73 +521,48 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
               simp only [add_assoc]
               apply Continuous.comp (continuous_add_left x) _
               apply Continuous.add (continuous_fst) (continuous_snd)
-        · have hdeterm : ∀ (a : G × G),
-          ‖Function.uncurry (fun z y ↦ (f (x + z) - f (x + z + y)) ^ 2) a‖ ≤ ‖4 * C * C‖
-           := by
-            intro a
-            simp only [Real.norm_eq_abs, norm_mul]
-            calc
-              |Function.uncurry (fun z y ↦ (f (x + z) - f (x + z + y)) ^ 2) a| =
-              |(f (x + a.1) - f (x + a.1 + a.2))^2| := by exact
-                (sq_eq_sq_iff_abs_eq_abs
-                      (Function.uncurry (fun z y ↦ (f (x + z) - f (x + z + y)) ^ 2) a)
-                      ((f (x + a.1) - f (x + a.1 + a.2)) ^ 2)).mp rfl
-              _ = |(f (x + a.1) - f (x + a.1 + a.2))|^2 :=
-                Eq.symm (pow_abs (f (x + a.1) - f (x + a.1 + a.2)) 2)
-              _ ≤ (|C| + |C|)^2 := by
-                rw [sq_le_sq]
-                simp only [abs_abs]
-                trans |f (x + a.1)| + |f (x + a.1 + a.2)|
-                · apply abs_sub (f (x + a.1)) (f (x + a.1 + a.2))
-                trans C + C
-                · exact add_le_add (hfbndC (x + a.1)) (hfbndC (x + a.1 + a.2))
-                trans |C| + |C|
-                · exact add_le_add (le_abs_self C) (le_abs_self C)
-                exact le_abs_self (|C| + |C|)
-              _ = |4| * |C| * |C| := by
-                ring
-          exact MeasureTheory.ae_of_all (μ.prod μ) hdeterm
-      _ = ∫ (y : G), (∫ (z : G), (f (x + z) - f (x + z + y)) * (f (x + z) - f (x + z + y)) ∂μ) ∂μ := by
+        · apply MeasureTheory.ae_of_all (μ.prod μ) _
+          intro a
+          simp only [Real.norm_eq_abs, norm_mul]
+          calc
+            |Function.uncurry (fun z y ↦ (f (x + z) - f (x + z + y)) ^ 2) a| =
+            |(f (x + a.1) - f (x + a.1 + a.2))^2| := by exact
+              (sq_eq_sq_iff_abs_eq_abs
+                    (Function.uncurry (fun z y ↦ (f (x + z) - f (x + z + y)) ^ 2) a)
+                    ((f (x + a.1) - f (x + a.1 + a.2)) ^ 2)).mp rfl
+            _ = |(f (x + a.1) - f (x + a.1 + a.2))|^2 :=
+              Eq.symm (pow_abs (f (x + a.1) - f (x + a.1 + a.2)) 2)
+            _ ≤ (|C| + |C|)^2 := by
+              rw [sq_le_sq]
+              simp only [abs_abs]
+              trans |f (x + a.1)| + |f (x + a.1 + a.2)|
+              · apply abs_sub (f (x + a.1)) (f (x + a.1 + a.2))
+              trans C + C
+              · exact add_le_add (hfbndC (x + a.1)) (hfbndC (x + a.1 + a.2))
+              trans |C| + |C|
+              · exact add_le_add (le_abs_self C) (le_abs_self C)
+              exact le_abs_self (|C| + |C|)
+            _ = |4| * |C| * |C| := by
+              ring
+      _ = ∫ (y : G), (∫ (z : G), (f (x + z) - f (x + z + y)) *
+            (f (x + z) - f (x + z + y)) ∂μ) ∂μ := by
         simp only [sq]
-      _ ≥ ∫ (y : G), (∫ (z : G), f (x + z) - f (x + z + y) ∂μ) * (∫ (z : G), f (x + z) - f (x + z + y) ∂μ) ∂μ := by
+      _ ≥ ∫ (y : G), (∫ (z : G), f (x + z) - f (x + z + y) ∂μ) *
+            (∫ (z : G), f (x + z) - f (x + z + y) ∂μ) ∂μ := by
         apply MeasureTheory.integral_mono
-        · apply MeasureTheory.Integrable.mono (MeasureTheory.integrable_const (4*C*C : ℝ)) _ _
-          · apply MeasureTheory.AEStronglyMeasurable.mul _ _
-            repeat
-            · have interm : MeasureTheory.AEStronglyMeasurable (fun (z : G × G) => f (x + z.2) - f (x + z.2 + z.1)) (μ.prod μ):= by
-                apply MeasureTheory.AEStronglyMeasurable.sub _ _
-                · apply Measurable.aestronglyMeasurable
-                  apply Measurable.comp' hfmeas _
-                  apply Continuous.measurable
-                  apply Continuous.comp (continuous_add_left x) continuous_snd
-                · apply Measurable.aestronglyMeasurable
-                  apply Measurable.comp' hfmeas _
-                  apply Continuous.measurable
-                  simp only [add_assoc]
-                  apply Continuous.comp (continuous_add_left x) _
-                  apply Continuous.add (continuous_snd) (continuous_fst)
-              apply MeasureTheory.AEStronglyMeasurable.integral_prod_right' interm
-          · have hdeterm : ∀ (a : G), ‖(∫ (z : G), f (x + z) - f (x + z + a) ∂μ) * ∫ (z : G), f (x + z) - f (x + z + a) ∂μ‖ ≤ ‖4 * C * C‖ := by
-              intro a
-              simp only [norm_mul, Real.norm_eq_abs, abs_mul_abs_self]
-              calc
-                (∫ (z : G), f (x + z) - f (x + z + a) ∂μ) * (∫ (z : G), f (x + z) - f (x + z + a) ∂μ) = (∫ (z : G), f (x + z) - f (x + z + a) ∂μ)^2 := by
-                  simp only [sq]
-                _ ≤ (∫ (z : G), 2 * |C| ∂μ)^2 := by
-                  rw [sq_le_sq]
-                  sorry
-                _ = (2 * |C|)^2 := by
-                  congr
-                  rw [MeasureTheory.integral_const (2 * |C|)]
-                  simp only [MeasureTheory.probReal_univ, smul_eq_mul, one_mul]
-                _ = 4 * |C| * |C| := by ring
-                _ = |4| * |C| * |C| := by
-                  simp only [Nat.abs_ofNat]
-            exact MeasureTheory.ae_of_all (μ) hdeterm
-        · sorry
+        · exact intoffxydiffsqis_integrable μ f hfmeas C hfbndC x
+        · exact intoffxydiffprod_is_integrable μ f hfmeas C hfbndC x
         · intro x_1
           dsimp
-          sorry
+          calc
+            (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ) *
+              (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ) =
+              (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ)^2 := by
+              exact Eq.symm (pow_two (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ))
+            _ ≤ (∫ (z : G), |f (x + z) - f (x + z + x_1)| ∂μ)^2 := by sorry
+            _ ≤ (∫ (z : G), |f (x + z) - f (x + z + x_1)|^2 ∂μ) := by sorry
+            _ = (∫ (z : G), (f (x + z) - f (x + z + x_1)) *
+              (f (x + z) - f (x + z + x_1)) ∂μ) := by congr; ring
       _ = ∫ (y : G), (∫ (z : G), f (x + z) - f (x + z + y) ∂μ)^2 ∂μ := by
         simp only [<- sq]
       _ = ∫ (y : G), (∫ (z : G), f (x + z) - f (x + y + z) ∂μ)^2 ∂μ := by
@@ -337,13 +584,22 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
         rw [hg]
         congr; ext y;
         exact pow_two (f x - f (x + y))
-  have hΦmeasn : ∀ (n : ℕ), Measurable (Φ^[n] (f * f)) := by
+  have hΦffmeasn : ∀ (n : ℕ), Measurable (Φ^[n] (f * f)) := by
     intro n
     induction n
     case zero =>
-      apply Measurable.mul
+      apply Measurable.mul _ _
       repeat
       · exact hfmeas
+    case succ n ih =>
+      rw [Φ.iterate_succ']
+      apply shift_operator_preserves_meas
+      exact ih
+  have hΦgmeasn : ∀ (n : ℕ), Measurable (Φ^[n] g) := by
+    intro n
+    induction n
+    case zero =>
+      exact gismeasurable μ f hfmeas
     case succ n ih =>
       rw [Φ.iterate_succ']
       apply shift_operator_preserves_meas
@@ -366,10 +622,21 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
       · induction n
         case zero =>
           simp only [Function.iterate_zero, id_eq]
-          exact hΦmeasn 0
+          exact hΦffmeasn 0
         case succ n ih' =>
-          exact hΦmeasn (n + 1)
+          exact hΦffmeasn (n + 1)
       · exact ih
+  have hΦgbnd : ∀ (n : ℕ), ∃ (C : ℝ), ∀ (x : G), |(Φ^[n] g) x| ≤ C := by
+    intro n
+    use 4 * C * C
+    induction n
+    case zero =>
+      intro x
+      simp only [Function.iterate_zero, id_eq]
+      rw [hg]; dsimp
+      sorry
+    case succ n ih =>
+      sorry
   have hineq2 : ∀ (n : ℕ) (x : G), (Φ^[n] g) x ≥ g x := by
     intro n
     induction n
@@ -383,12 +650,10 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
         _ ≥ Φ g := by
           apply shift_operator_is_monotone
           · rw [hg];
-            sorry
-          · sorry
-          · use 4*C*C
-            sorry
-          · use 4*C*C
-            sorry
+            exact gismeasurable μ f hfmeas
+          · exact hΦgmeasn n
+          · exact hΦgbnd 0
+          · exact hΦgbnd n
           · exact ih
         _ ≥ g := hineq1
   have gpos : ∀ (x : G), g x ≥ 0 := by
@@ -398,12 +663,58 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     intro x_1;
     simp only [Pi.zero_apply]
     exact mul_self_nonneg (f x - f (x + x_1))
+  have hindlinΦ : ∀ (n : ℕ), Φ^[n + 1] (f * f) - Φ^[n] (f * f) = Φ^[n] (Φ (f * f) - (f * f)) := by
+    intro n
+    induction n
+    case zero =>
+      simp only [zero_add, Function.iterate_one, Function.iterate_zero, id_eq]
+    case succ n ih =>
+      rw [Φ.iterate_succ']
+      calc
+        (Φ ∘ Φ^[n + 1]) (f * f) - Φ^[n + 1] (f * f) =
+          (Φ ∘ Φ^[n + 1]) (f * f) - (Φ ∘ Φ^[n]) (f * f) := by
+          simp only [Function.iterate_succ, Function.comp_apply, sub_right_inj]
+          exact Function.iterate_succ_apply' Φ n (f * f)
+        _ = (fun (x : G) => ∫ (y : G), Φ^[n + 1] (f * f) (x + y) ∂μ -
+          ∫ (y : G), Φ^[n] (f * f) (x + y) ∂μ) := by
+          exact Pi.sub_def ((Φ ∘ Φ^[n + 1]) (f * f)) ((Φ ∘ Φ^[n]) (f * f))
+        _ = (fun (x : G) => ∫ (y : G), Φ^[n + 1] (f * f) (x + y) - Φ^[n] (f * f) (x + y) ∂μ) := by
+          ext x;
+          rw [MeasureTheory.integral_sub]
+          · constructor
+            · apply Measurable.aestronglyMeasurable
+              apply Measurable.comp' (hΦffmeasn (n + 1)) _
+              apply Continuous.measurable
+              exact continuous_add_left x
+            · rcases hΦbnd with ⟨C₁, hΦbndC₁⟩
+              have interm : ∀ᵐ (a : G) ∂μ, ‖Φ^[n + 1] (f * f) (x + a)‖ ≤ C₁ := by
+                apply MeasureTheory.ae_of_all μ _
+                intro a
+                simp only [Function.comp_apply, Real.norm_eq_abs]
+                exact hΦbndC₁ (n + 1) (x + a)
+              apply MeasureTheory.HasFiniteIntegral.of_bounded interm
+          · constructor
+            · apply Measurable.aestronglyMeasurable
+              apply Measurable.comp' (hΦffmeasn n) _
+              apply Continuous.measurable
+              exact continuous_add_left x
+            · rcases hΦbnd with ⟨C₁, hΦbndC₁⟩
+              have interm : ∀ᵐ (a : G) ∂μ, ‖Φ^[n] (f * f) (x + a)‖ ≤ C₁ := by
+                apply MeasureTheory.ae_of_all μ _
+                intro a
+                simp only [Function.comp_apply, Real.norm_eq_abs]
+                exact hΦbndC₁ n (x + a)
+              apply MeasureTheory.HasFiniteIntegral.of_bounded interm
+        _ = Φ (Φ^[n + 1] (f * f) - Φ^[n] (f * f)) := by exact List.map_inj.mp rfl
+        _ = Φ (Φ^[n] (Φ (f * f) - (f * f))) := List.map_inj.mp (congrArg List.map (congrArg Φ ih))
+        _ = Φ^[n+1] (Φ (f * f) - (f * f)) :=
+          Eq.symm (Function.iterate_succ_apply' Φ n (Φ (f * f) - f * f))
   have h2 : ∀ (n : ℕ) (x : G), (Φ^[n+1] (f * f)) x - (Φ^[n] (f * f)) x ≥ g x := by
     intro n x
     calc
       Φ^[n + 1] (f * f) x - Φ^[n] (f * f) x = Φ^[n] (Φ (f * f) - (f * f)) x := by
-        rw [Φ.iterate_succ n]
-        sorry
+        rw [<- hindlinΦ n]
+        exact Real.ext_cauchy rfl
       _ = Φ^[n] g x := by
         congr!
         ext z
@@ -425,8 +736,7 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
   intro x
   specialize gvanishes x
   rw [MeasureTheory.integral_eq_zero_iff_of_nonneg] at gvanishes
-  · have h3 : ∀ᵐ (y : G) ∂μ, (f x - f (x + y)) * (f x - f (x + y)) = 0 := by
-      exact gvanishes
+  · have h3 : ∀ᵐ (y : G) ∂μ, (f x - f (x + y)) * (f x - f (x + y)) = 0 := gvanishes
     simp only [mul_self_eq_zero, sub_eq_zero] at h3
     exact h3
   · intro y; dsimp;
@@ -440,28 +750,30 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
         apply Measurable.comp' hfmeas _
         apply Continuous.measurable
         exact continuous_add_left x
-  · have hdeter : ∀ (a : G), ‖(f x - f (x + a)) * (f x - f (x + a))‖ ≤ ‖4 * C * C‖ := by
-      intro a
-      simp only [norm_mul, Real.norm_eq_abs, abs_mul_abs_self]
-      calc
-        (f x - f (x + a)) * (f x - f (x + a)) = (f x - f (x + a))^2 :=
-          Eq.symm (pow_two (f x - f (x + a)))
-        _ ≤ (|C| + |C|)^2 := by
-          rw [sq_le_sq]
-          trans |f x| + |f (x + a)|
-          · exact abs_sub (f x) (f (x + a))
-          trans C + C
-          · apply add_le_add (hfbndC x) (hfbndC (x + a))
-          trans |C| + |C|
-          · ring
-            simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀]
-            exact le_abs_self C
-          exact le_abs_self (|C| + |C|)
-        _ = 4 * |C| * |C| := by ring
-        _ = |4| * |C| * |C| := by simp
-    exact MeasureTheory.ae_of_all μ hdeter
+  · apply MeasureTheory.ae_of_all μ _
+    intro a
+    simp only [norm_mul, Real.norm_eq_abs, abs_mul_abs_self]
+    calc
+      (f x - f (x + a)) * (f x - f (x + a)) = (f x - f (x + a))^2 :=
+        Eq.symm (pow_two (f x - f (x + a)))
+      _ ≤ (|C| + |C|)^2 := by
+        rw [sq_le_sq]
+        trans |f x| + |f (x + a)|
+        · exact abs_sub (f x) (f (x + a))
+        trans C + C
+        · apply add_le_add (hfbndC x) (hfbndC (x + a))
+        trans |C| + |C|
+        · ring
+          simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀]
+          exact le_abs_self C
+        exact le_abs_self (|C| + |C|)
+      _ = 4 * |C| * |C| := by ring
+      _ = |4| * |C| * |C| := by simp
 
+
+/-
 theorem ChoquetDenyPMF {G : Type*} [CommGroup G] [TopologicalSpace G] [DiscreteTopology G]
   [Countable G] (μ : PMF G) (f : G → ℝ)
 (hhar : f ∈ BoundedHarmonicFunctions μ) (hgen : Subgroup.closure μ.support = G) :
 ∀ (x y : G), f x = f y := by sorry
+-/

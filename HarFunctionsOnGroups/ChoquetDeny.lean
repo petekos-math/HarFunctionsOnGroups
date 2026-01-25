@@ -179,6 +179,46 @@ lemma fxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G
       _ = 4 * |C| * |C| := by ring
       _ = |4| * |C| * |C| := by simp only [Nat.abs_ofNat]
 
+lemma fxydiff2prod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[SecondCountableTopology G] [MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+(f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
+(hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x : G), MeasureTheory.Integrable
+  (fun x_1 ↦ (f x - f (x + x_1)) * (f x - f (x + x_1))) μ := by
+  intro x
+  apply MeasureTheory.Integrable.mono (MeasureTheory.integrable_const (4*C*C : ℝ)) _ _
+  · apply MeasureTheory.AEStronglyMeasurable.mul _ _
+    repeat
+    · apply Measurable.aestronglyMeasurable
+      apply Measurable.sub
+      · exact measurable_const
+      · apply Measurable.comp' hfmeas _
+        exact measurable_const_add x
+  · apply MeasureTheory.ae_of_all μ _
+    intro a; simp only [norm_mul, Real.norm_eq_abs, abs_mul_abs_self]
+    calc
+      (f (x) - f (x + a)) * (f (x) - f (x + a))
+        = (f (x) - f (x + a))^2 := by
+        exact Eq.symm (pow_two (f (x) - f (x + a)))
+      _ ≤ (|f (x)| + |f (x + a)|)^2 := by
+        rw [sq_le_sq]
+        trans |f (x)| + |f (x + a)|
+        · exact abs_sub (f (x)) (f (x + a))
+        exact le_abs_self (|f (x)| + |f (x + a)|)
+      _ ≤ (2 * |C|)^2 := by
+        rw [sq_le_sq, abs_of_nonneg];
+        simp only [abs_mul, Nat.abs_ofNat, abs_abs]
+        trans C + C
+        · exact add_le_add (hfbnd (x)) (hfbnd (x + a))
+        trans |C| + |C|
+        · ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
+          exact le_abs_self C
+        ring; rfl
+        exact add_nonneg (abs_nonneg (f (x))) (abs_nonneg (f (x + a)))
+      _ = 4 * |C| * |C| := by ring
+      _ = |4| * |C| * |C| := by simp only [Nat.abs_ofNat]
+
 lemma intoffxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
 [SecondCountableTopology G] [MeasurableSpace G]
 [BorelSpace G] [IsTopologicalAddGroup G]
@@ -560,9 +600,29 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
               (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ)^2 := by
               exact Eq.symm (pow_two (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ))
             _ ≤ (∫ (z : G), |f (x + z) - f (x + z + x_1)| ∂μ)^2 := by sorry
-            _ ≤ (∫ (z : G), |f (x + z) - f (x + z + x_1)|^2 ∂μ) := by sorry
+            _ = (∫ (z : G), |f (x + z) - f (x + z + x_1)| * 1 ∂μ)^2 := by
+              simp only [mul_one]
+            _ ≤ (Real.sqrt (∫ (z : G), |f (x + z) - f (x + z + x_1)|^2 ∂μ)
+               * Real.sqrt (∫ (z : G), (1 ^ 2) ∂μ))^2 := by
+              rw [sq_le_sq]
+              rw [abs_of_nonneg]
+              · rw [abs_of_nonneg]
+                · sorry
+                · sorry
+              · sorry
+            _ = (∫ (z : G), |f (x + z) - f (x + z + x_1)|^2 ∂μ) := by
+              simp only [sq_abs, one_pow, MeasureTheory.integral_const, MeasureTheory.probReal_univ,
+                smul_eq_mul, mul_one, Real.sqrt_one]
+              rw [Real.sq_sqrt]
+              apply MeasureTheory.integral_nonneg
+              · intro y; dsimp
+                exact sq_nonneg (f (x + y) - f (x + y + x_1))
             _ = (∫ (z : G), (f (x + z) - f (x + z + x_1)) *
-              (f (x + z) - f (x + z + x_1)) ∂μ) := by congr; ring
+              (f (x + z) - f (x + z + x_1)) ∂μ) := by
+              congr
+              ext y
+              rw [sq_abs]
+              ring
       _ = ∫ (y : G), (∫ (z : G), f (x + z) - f (x + z + y) ∂μ)^2 ∂μ := by
         simp only [<- sq]
       _ = ∫ (y : G), (∫ (z : G), f (x + z) - f (x + y + z) ∂μ)^2 ∂μ := by
@@ -634,9 +694,76 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
       intro x
       simp only [Function.iterate_zero, id_eq]
       rw [hg]; dsimp
-      sorry
+      rw [abs_le]
+      constructor
+      · calc
+          -(4 * C * C) = ∫ (z : G), -(4 * C * C) ∂μ := by
+            rw [MeasureTheory.integral_const (-(4 * C * C))]
+            simp
+          _ ≤ ∫ (y : G), (f x - f (x + y)) * (f x - f (x + y)) ∂μ := by
+            apply MeasureTheory.integral_mono (MeasureTheory.integrable_const (-(4 * C * C))) _ _
+            · exact fxydiff2prod_is_integrable μ f hfmeas C hfbndC x
+            · intro z
+              dsimp
+              rw [neg_le]
+              trans |f x - f (x + z)| * |f x - f (x + z)|
+              · simp only [abs_mul_abs_self, neg_le_self_iff]
+                exact mul_self_nonneg (f x - f (x + z))
+              trans (2 * C) * (2 * C)
+              · refine mul_le_mul_of_nonneg ?_ ?_ ?_ ?_
+                · trans |f x| + |f (x + z)|
+                  · exact abs_sub (f x) (f (x + z))
+                  trans C + C
+                  · exact add_le_add (hfbndC x) (hfbndC (x + z))
+                  ring; rfl
+                · trans |f x| + |f (x + z)|
+                  · exact abs_sub (f x) (f (x + z))
+                  trans C + C
+                  · exact add_le_add (hfbndC x) (hfbndC (x + z))
+                  ring; rfl
+                · exact abs_nonneg (f x - f (x + z))
+                · trans 2 * |f 0|
+                  · simp only [Nat.ofNat_pos, mul_nonneg_iff_of_pos_left, abs_nonneg]
+                  simp only [Nat.ofNat_pos, mul_le_mul_iff_right₀]
+                  exact hfbndC (0 : G)
+              ring; rfl
+      · calc
+        ∫ (y : G), (f x - f (x + y)) * (f x - f (x + y)) ∂μ ≤ ∫ (y : G), 4 * C * C ∂μ := by
+          apply MeasureTheory.integral_mono _ (MeasureTheory.integrable_const ((4 * C * C)))
+          · intro y
+            dsimp
+            calc
+              (f x - f (x + y)) * (f x - f (x + y)) = |f x - f (x + y)| * |f x - f (x + y)| := by
+                exact Eq.symm (abs_mul_abs_self (f x - f (x + y)))
+              _ ≤ (2 * C) * (2 * C) := by
+                refine mul_le_mul_of_nonneg ?_ ?_ ?_ ?_
+                · trans |f x| + |f (x + y)|
+                  · exact abs_sub (f x) (f (x + y))
+                  trans C + C
+                  · exact add_le_add (hfbndC x) (hfbndC (x + y))
+                  ring_nf; rfl
+                · trans |f x| + |f (x + y)|
+                  · exact abs_sub (f x) (f (x + y))
+                  trans C + C
+                  · exact add_le_add (hfbndC x) (hfbndC (x + y))
+                  ring_nf; rfl
+                · exact abs_nonneg (f x - f (x + y))
+                · trans 2 * |f 0|
+                  · simp only [Nat.ofNat_pos, mul_nonneg_iff_of_pos_left, abs_nonneg]
+                  simp only [Nat.ofNat_pos, mul_le_mul_iff_right₀]
+                  exact hfbndC (0 : G)
+              _ = 4 * C * C := by ring
+          · exact fxydiff2prod_is_integrable μ f hfmeas C hfbndC x
+        _ = 4 * C * C := by
+          rw [MeasureTheory.integral_const]
+          simp
     case succ n ih =>
-      sorry
+      simp only [Φ.iterate_succ']
+      have : ∀ (x : G), |∫ (y : G), (Φ^[n]) g (x + y) ∂μ| ≤ 4 * C * C :=
+        shift_operator_bounded μ (Φ^[n] g) (4 * C * C) (hΦgmeasn n) ih
+      intro x
+      specialize this x
+      exact RCLike.ofReal_le_ofReal.mp this
   have hineq2 : ∀ (n : ℕ) (x : G), (Φ^[n] g) x ≥ g x := by
     intro n
     induction n
@@ -690,7 +817,7 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
               have interm : ∀ᵐ (a : G) ∂μ, ‖Φ^[n + 1] (f * f) (x + a)‖ ≤ C₁ := by
                 apply MeasureTheory.ae_of_all μ _
                 intro a
-                simp only [Function.comp_apply, Real.norm_eq_abs]
+                simp only [Real.norm_eq_abs]
                 exact hΦbndC₁ (n + 1) (x + a)
               apply MeasureTheory.HasFiniteIntegral.of_bounded interm
           · constructor
@@ -702,7 +829,7 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
               have interm : ∀ᵐ (a : G) ∂μ, ‖Φ^[n] (f * f) (x + a)‖ ≤ C₁ := by
                 apply MeasureTheory.ae_of_all μ _
                 intro a
-                simp only [Function.comp_apply, Real.norm_eq_abs]
+                simp only [Real.norm_eq_abs]
                 exact hΦbndC₁ n (x + a)
               apply MeasureTheory.HasFiniteIntegral.of_bounded interm
         _ = Φ (Φ^[n + 1] (f * f) - Φ^[n] (f * f)) := by exact List.map_inj.mp rfl

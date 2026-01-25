@@ -486,7 +486,7 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
 [SecondCountableTopology G] [MeasurableSpace G]
 [BorelSpace G] [IsTopologicalAddGroup G]
 (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
-(f : G → ℝ) (hμreg : μ.Regular) (hfmeas : Measurable f)
+(f : G → ℝ) (hfmeas : Measurable f)
 (hfbnd : ∃ (C : ℝ), ∀ (x : G), |f x| ≤ C)
 (hfint : ∀ (x : G), ∫ y, f (x + y) ∂μ = f x) : ∀ (x : G), ∀ᵐ (y : G) ∂μ, f x = f (x + y) := by
   set Φ := fun (r : G → ℝ) => (fun (x : G) => ∫ y, r (x + y) ∂μ) with hΦ
@@ -599,20 +599,58 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
               (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ) =
               (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ)^2 := by
               exact Eq.symm (pow_two (∫ (z : G), f (x + z) - f (x + z + x_1) ∂μ))
-            _ ≤ (∫ (z : G), |f (x + z) - f (x + z + x_1)| ∂μ)^2 := by sorry
+            _ ≤ (∫ (z : G), |f (x + z) - f (x + z + x_1)| ∂μ)^2 := by
+              rw [sq_le_sq]
+              have another_nonneg : 0 ≤ ∫ (z : G), |f (x + z) - f (x + z + x_1)| ∂μ := by
+                apply MeasureTheory.integral_nonneg
+                · intro y; dsimp;
+                  exact abs_nonneg (f (x + y) - f (x + y + x_1))
+              rw [abs_of_nonneg another_nonneg]
+              simp only [<- Real.norm_eq_abs]
+              apply MeasureTheory.norm_integral_le_integral_norm
             _ = (∫ (z : G), |f (x + z) - f (x + z + x_1)| * 1 ∂μ)^2 := by
               simp only [mul_one]
-            _ ≤ (Real.sqrt (∫ (z : G), |f (x + z) - f (x + z + x_1)|^2 ∂μ)
-               * Real.sqrt (∫ (z : G), (1 ^ 2) ∂μ))^2 := by
+            _ ≤ (Real.sqrt (∫ (z : G), |f (x + z) - f (x + z + x_1)|^(2 : ℝ) ∂μ)
+               * Real.sqrt (∫ (z : G), (1 ^ (2 : ℝ)) ∂μ))^2 := by
               rw [sq_le_sq]
               rw [abs_of_nonneg]
               · rw [abs_of_nonneg]
-                · sorry
-                · sorry
-              · sorry
+                · simp only [Real.sqrt_eq_rpow]
+                  have h1nonneg : 0 ≤ᵐ[μ] (fun (z : G) => |f (x + z) - f (x + z + x_1)|) := by
+                    apply MeasureTheory.ae_of_all μ _
+                    intro a; dsimp;
+                    exact abs_nonneg (f (x + a) - f (x + a + x_1))
+                  have h2nonneg : 0 ≤ᵐ[μ] (fun (z : G) => (1 : ℝ)) := by
+                    apply MeasureTheory.ae_of_all μ _
+                    intro a; dsimp; norm_num
+                  apply MeasureTheory.integral_mul_le_Lp_mul_Lq_of_nonneg
+                    Real.HolderConjugate.two_two h1nonneg h2nonneg _ _
+                  · simp only [ENNReal.ofReal_ofNat]
+                    have hbound3 : ∀ᵐ (x_2 : G) ∂μ,
+                      ‖|f (x + x_2) - f (x + x_2 + x_1)|‖ ≤ 2 * C :=  by
+                      apply MeasureTheory.ae_of_all μ _
+                      intro a
+                      simp only [Real.norm_eq_abs, abs_abs]
+                      trans |f (x + a)| + |f (x + a + x_1)|
+                      · exact abs_sub (f (x + a)) (f (x + a + x_1))
+                      trans C + C
+                      · exact add_le_add (hfbndC (x + a)) (hfbndC (x + a + x_1))
+                      ring_nf; rfl
+                    apply MeasureTheory.MemLp.of_bound _ (2 * C) hbound3
+                    · apply Measurable.aestronglyMeasurable
+                      simp only [<- Real.norm_eq_abs]
+                      apply Measurable.norm
+                      exact fxydiff_is_measurable f hfmeas x x_1
+                  · simp only [ENNReal.ofReal_ofNat]
+                    exact MeasureTheory.memLp_const 1
+                · simp only [Real.rpow_ofNat, sq_abs, one_pow, MeasureTheory.integral_const,
+                  MeasureTheory.probReal_univ, smul_eq_mul, mul_one, Real.sqrt_one,
+                  Real.sqrt_nonneg]
+              · apply MeasureTheory.integral_nonneg
+                · intro y; dsimp; simp only [mul_one, abs_nonneg]
             _ = (∫ (z : G), |f (x + z) - f (x + z + x_1)|^2 ∂μ) := by
-              simp only [sq_abs, one_pow, MeasureTheory.integral_const, MeasureTheory.probReal_univ,
-                smul_eq_mul, mul_one, Real.sqrt_one]
+              simp only [Real.rpow_ofNat, sq_abs, one_pow, MeasureTheory.integral_const,
+                MeasureTheory.probReal_univ, smul_eq_mul, mul_one, Real.sqrt_one]
               rw [Real.sq_sqrt]
               apply MeasureTheory.integral_nonneg
               · intro y; dsimp

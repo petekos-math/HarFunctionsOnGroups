@@ -11,6 +11,10 @@ import Mathlib.MeasureTheory.Function.LpSpace.Basic
 
 noncomputable section
 
+variable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
+[MeasurableSpace G]
+[BorelSpace G] [IsTopologicalAddGroup G]
+
 -- Lemma : if a bounded sequence has differences of consequtive elements
 -- bounded from below by a non-negative b then b = 0
 lemma unif_bounded_diff (a : ℕ → ℝ) (b : ℝ) (abnd : ∃ C, ∀ n, |a n| ≤ C)
@@ -57,10 +61,7 @@ lemma unif_bounded_diff (a : ℕ → ℝ) (b : ℝ) (abnd : ∃ C, ∀ n, |a n| 
     _ ≤ a N := RCLike.ofReal_le_ofReal.mp hbig
     _ ≤ |a N| := by exact le_abs_self (a N)
 
-lemma fxy_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+lemma fxy_is_integrable (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) :
 ∀ (x : G), MeasureTheory.Integrable (fun y => (f (x + y))) μ := by
@@ -78,10 +79,7 @@ lemma fxy_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     exact le_abs_self C
 
 
-lemma fxya_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+lemma fxya_is_integrable (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) :
 ∀ (x a : G), MeasureTheory.Integrable (fun y => (f (x + y + a))) μ := by
@@ -99,10 +97,7 @@ lemma fxya_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
     exact le_abs_self C
 
 
-lemma fxy2_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+lemma fxy2_is_integrable (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) :
 ∀ (x : G), MeasureTheory.Integrable (fun y => (f (x + y))^2) μ := by
@@ -128,10 +123,7 @@ lemma fxy2_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
         exact le_abs_self C
       _ = |C| * |C| := by exact pow_two |C|
 
-lemma fxydiff_is_measurable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(f : G → ℝ) (hfmeas : Measurable f) : ∀ (x z : G),
+lemma fxydiff_is_measurable (f : G → ℝ) (hfmeas : Measurable f) : ∀ (x z : G),
 Measurable (fun x_1 ↦ (f (x + x_1) - f (x + x_1 + z))) := by
   intro x z
   apply Measurable.sub _ _
@@ -142,10 +134,7 @@ Measurable (fun x_1 ↦ (f (x + x_1) - f (x + x_1 + z))) := by
     apply Continuous.measurable
     exact Continuous.comp (continuous_add_right z) (continuous_add_left x)
 
-lemma fxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+lemma fxydiffprod_is_integrable (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x z : G), MeasureTheory.Integrable
   (fun x_1 ↦ (f (x + x_1) - f (x + x_1 + z)) * (f (x + x_1) - f (x + x_1 + z))) μ := by
@@ -166,22 +155,21 @@ lemma fxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G
         trans |f (x + a)| + |f (x + a + z)|
         · exact abs_sub (f (x + a)) (f (x + a + z))
         exact le_abs_self (|f (x + a)| + |f (x + a + z)|)
-      _ ≤ (2 * |C|)^2 := by
+      _ ≤ (|C| + |C|)^2 := by
         rw [sq_le_sq, abs_of_nonneg];
-        simp only [abs_mul, Nat.abs_ofNat, abs_abs]
-        trans C + C
-        · exact add_le_add (hfbnd (x + a)) (hfbnd (x + a + z))
-        trans |C| + |C|
-        · ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
-          exact le_abs_self C
-        ring; rfl
-        exact add_nonneg (abs_nonneg (f (x +a ))) (abs_nonneg (f (x + a + z)))
+        · trans C + C
+          · exact add_le_add (hfbnd (x + a)) (hfbnd (x + a + z))
+          rw [abs_of_nonneg]
+          · ring_nf; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
+            exact le_abs_self C
+          · simp only [nonneg_add_self_iff, abs_nonneg]
+        · exact add_nonneg (abs_nonneg (f (x + a))) (abs_nonneg (f (x + a + z)))
+      _ ≤ (2 * |C|)^2 := by
+        ring_nf; rfl
       _ = 4 * |C| * |C| := by ring
       _ = |4| * |C| * |C| := by simp only [Nat.abs_ofNat]
 
-lemma fxydiff2prod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
+lemma fxydiff2prod_is_integrable
 (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x : G), MeasureTheory.Integrable
@@ -206,22 +194,18 @@ lemma fxydiff2prod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace 
         trans |f (x)| + |f (x + a)|
         · exact abs_sub (f (x)) (f (x + a))
         exact le_abs_self (|f (x)| + |f (x + a)|)
-      _ ≤ (2 * |C|)^2 := by
+      _ ≤ (C + C)^2 := by
         rw [sq_le_sq, abs_of_nonneg];
-        simp only [abs_mul, Nat.abs_ofNat, abs_abs]
-        trans C + C
-        · exact add_le_add (hfbnd (x)) (hfbnd (x + a))
-        trans |C| + |C|
-        · ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
-          exact le_abs_self C
-        ring; rfl
-        exact add_nonneg (abs_nonneg (f (x))) (abs_nonneg (f (x + a)))
+        · trans C + C
+          · exact add_le_add (hfbnd x) (hfbnd (x + a))
+          exact le_abs_self (C + C)
+        · exact add_nonneg (abs_nonneg (f (x))) (abs_nonneg (f (x + a)))
+      _ = (2 * |C|)^2 := by
+        ring_nf; simp only [sq_abs]
       _ = 4 * |C| * |C| := by ring
       _ = |4| * |C| * |C| := by simp only [Nat.abs_ofNat]
 
-lemma intoffxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
+lemma intoffxydiffprod_is_integrable [SecondCountableTopology G]
 (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x : G), MeasureTheory.Integrable
@@ -276,10 +260,10 @@ lemma intoffxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSp
                   · exact abs_sub (f (x + y + a)) (f (x + y))
                   trans C + C
                   · exact add_le_add (hfbnd (x + y + a)) (hfbnd (x + y))
-                  ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀]
+                  ring_nf; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀]
                   exact le_abs_self C
                 _ = (2 * |C|) * (2 * |C|) := pow_two (2 * |C|)
-            ring; rfl
+            ring_nf; rfl
           · exact fxydiffprod_is_integrable μ f hfmeas C hfbnd x a
     · calc
         ∫ (z : G), (f (x + z) - f (x + z + a)) * (f (x + z) - f (x + z + a)) ∂μ ≤
@@ -296,16 +280,14 @@ lemma intoffxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSp
                 trans |f (x + y)| + |f (x + y + a)|
                 · exact abs_sub (f (x + y)) (f (x + y + a))
                 exact le_abs_self (|f (x + y)| + |f (x + y + a)|)
-              _ ≤ (2 * |C|)^2 := by
+              _ ≤ (C + C)^2 := by
                 rw [sq_le_sq, abs_of_nonneg];
-                simp only [abs_mul, Nat.abs_ofNat, abs_abs]
-                trans C + C
-                · exact add_le_add (hfbnd (x + y)) (hfbnd (x + y + a))
-                trans |C| + |C|
-                · ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
-                  exact le_abs_self C
-                ring; rfl
-                exact add_nonneg (abs_nonneg (f (x + y))) (abs_nonneg (f (x + y + a)))
+                · trans C + C
+                  · exact add_le_add (hfbnd (x + y)) (hfbnd (x + y + a))
+                  exact le_abs_self (C + C)
+                · exact add_nonneg (abs_nonneg (f (x + y))) (abs_nonneg (f (x + y + a)))
+              _ = (2 * |C|)^2 := by
+                ring_nf; simp only [sq_abs]
               _ = 4 * |C| * |C| := by ring
           · exact fxydiffprod_is_integrable μ f hfmeas C hfbnd x a
         _ = 4 * |C| * |C| := by
@@ -313,10 +295,8 @@ lemma intoffxydiffprod_is_integrable {G : Type*} [AddCommGroup G] [TopologicalSp
           simp only [MeasureTheory.probReal_univ, smul_eq_mul, one_mul]
         _ = |4| * |C| * |C| := by simp
 
-lemma intoffxydiffsqis_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+lemma intoffxydiffsqis_integrable
+[SecondCountableTopology G] (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) (C : ℝ)
 (hfbnd : ∀ (x : G), |f x| ≤ C) : ∀ (x : G), MeasureTheory.Integrable
   (fun x_1 ↦ ((∫ (z : G),
@@ -380,7 +360,7 @@ lemma intoffxydiffsqis_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace
               _ ≤ C + C := by
                 exact add_le_add (hfbnd (x + y)) (hfbnd (x + y + a))
               _ ≤ |C| + |C| := by
-                ring; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
+                ring_nf; simp only [Nat.ofNat_pos, mul_le_mul_iff_left₀];
                 exact le_abs_self C
               _ = 2 * |C| := by ring
           · exact MeasureTheory.Integrable.sub (fxy_is_integrable μ f hfmeas C hfbnd x)
@@ -395,11 +375,10 @@ lemma intoffxydiffsqis_integrable {G : Type*} [AddCommGroup G] [TopologicalSpace
 
 
 
-lemma shift_operator_preserves_meas {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
-(f : G → ℝ) (hfmeas : Measurable f) : Measurable (fun (x : G) => ∫ (y : G), f (x + y) ∂μ) := by
+lemma shift_operator_preserves_meas [SecondCountableTopology G]
+(μ : MeasureTheory.Measure G)
+[MeasureTheory.IsProbabilityMeasure μ] (f : G → ℝ) (hfmeas : Measurable f) :
+Measurable (fun (x : G) => ∫ (y : G), f (x + y) ∂μ) := by
   rw [<- stronglyMeasurable_iff_measurable]
   rw [<- stronglyMeasurable_iff_measurable] at hfmeas
   apply MeasureTheory.StronglyMeasurable.integral_prod_left
@@ -408,10 +387,7 @@ lemma shift_operator_preserves_meas {G : Type*} [AddCommGroup G] [TopologicalSpa
   simp only [add_comm]
   apply Continuous.add (continuous_fst) (continuous_snd)
 
-lemma shift_operator_bounded {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+lemma shift_operator_bounded (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (C : ℝ) (hfmeas : Measurable f) (hfbnd : ∀ (x : G), |f x| ≤ C) :
 ∀ (x : G), |∫ (y : G), f (x + y) ∂μ| ≤ C := by
   intro x
@@ -438,9 +414,7 @@ lemma shift_operator_bounded {G : Type*} [AddCommGroup G] [TopologicalSpace G]
       rw [MeasureTheory.integral_const C]
       simp
 
-lemma shift_operator_is_monotone {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
+lemma shift_operator_is_monotone
 (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f₁ f₂ : G → ℝ) (hf₁meas : Measurable f₁) (hf₂meas : Measurable f₂)
 (hf₁bnd : ∃ (C : ℝ), ∀ (x : G), |f₁ x| ≤ C) (hf₂bnd : ∃ (C : ℝ), ∀ (x : G), |f₂ x| ≤ C)
@@ -454,9 +428,7 @@ lemma shift_operator_is_monotone {G : Type*} [AddCommGroup G] [TopologicalSpace 
   · exact fxy_is_integrable μ f₂ hf₂meas C₂ hf₂bndC x
   · exact Pi.le_def.mpr fun i ↦ hge (x + i)
 
-lemma gismeasurable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
+lemma gismeasurable [SecondCountableTopology G]
 (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
 (f : G → ℝ) (hfmeas : Measurable f) :
 Measurable (fun x ↦ ∫ (y : G), (f x - f (x + y)) * (f x - f (x + y)) ∂μ) := by
@@ -482,11 +454,8 @@ Measurable (fun x ↦ ∫ (y : G), (f x - f (x + y)) * (f x - f (x + y)) ∂μ) 
   exact stronglyMeasurable_iff_measurable.mp
     (MeasureTheory.StronglyMeasurable.integral_prod_right' interm)
 
-theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
-[SecondCountableTopology G] [MeasurableSpace G]
-[BorelSpace G] [IsTopologicalAddGroup G]
-(μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
-(f : G → ℝ) (hfmeas : Measurable f)
+theorem ChoquetDeny [SecondCountableTopology G] (μ : MeasureTheory.Measure G)
+[MeasureTheory.IsProbabilityMeasure μ] (f : G → ℝ) (hfmeas : Measurable f)
 (hfbnd : ∃ (C : ℝ), ∀ (x : G), |f x| ≤ C)
 (hfint : ∀ (x : G), ∫ y, f (x + y) ∂μ = f x) : ∀ (x : G), ∀ᵐ (y : G) ∂μ, f x = f (x + y) := by
   set Φ := fun (r : G → ℝ) => (fun (x : G) => ∫ y, r (x + y) ∂μ) with hΦ
@@ -753,18 +722,18 @@ theorem ChoquetDeny {G : Type*} [AddCommGroup G] [TopologicalSpace G]
                   · exact abs_sub (f x) (f (x + z))
                   trans C + C
                   · exact add_le_add (hfbndC x) (hfbndC (x + z))
-                  ring; rfl
+                  ring_nf; rfl
                 · trans |f x| + |f (x + z)|
                   · exact abs_sub (f x) (f (x + z))
                   trans C + C
                   · exact add_le_add (hfbndC x) (hfbndC (x + z))
-                  ring; rfl
+                  ring_nf; rfl
                 · exact abs_nonneg (f x - f (x + z))
                 · trans 2 * |f 0|
                   · simp only [Nat.ofNat_pos, mul_nonneg_iff_of_pos_left, abs_nonneg]
                   simp only [Nat.ofNat_pos, mul_le_mul_iff_right₀]
                   exact hfbndC (0 : G)
-              ring; rfl
+              ring_nf; rfl
       · calc
         ∫ (y : G), (f x - f (x + y)) * (f x - f (x + y)) ∂μ ≤ ∫ (y : G), 4 * C * C ∂μ := by
           apply MeasureTheory.integral_mono _ (MeasureTheory.integrable_const ((4 * C * C)))

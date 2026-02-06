@@ -1,4 +1,3 @@
-import HarFunctionsOnGroups.HarmonicPMF
 import Mathlib.Topology.Algebra.Group.Basic
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.Measure.Regular
@@ -11,4 +10,6 @@ import Mathlib.MeasureTheory.Function.LpSpace.Basic
 
 noncomputable section
 
-#eval 2+2
+structure MeasuredGroup {G : Type*} [Group G] [TopologicalSpace G] [IsDiscrete G]
+[MeasurableSpace G] [BorelSpace G] where
+  prob : (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]

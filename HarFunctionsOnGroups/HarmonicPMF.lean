@@ -6,6 +6,7 @@ import Mathlib.MeasureTheory.Measure.MeasureSpace
 import Mathlib.Analysis.Convex.KreinMilman
 import Mathlib.Analysis.Normed.Group.Bounded
 import Mathlib.Topology.ContinuousMap.Bounded.Basic
+import Mathlib.Topology.Algebra.InfiniteSum.Module
 
 noncomputable section
 
@@ -15,11 +16,9 @@ open ENNReal
 def IsHarmonicFunction {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G → ℝ) : Prop :=
 ∀ (x : G), HasSum (fun (g : G) => (μ g).toReal * f (x * g)) (f x)
 
-
-
 -- A technical lemma to prove that the probability measure sums to 1 after coercion to ℝ
 lemma HasSum_coe_toReal {α : Type*} (μ : PMF α) : HasSum (fun (x : α) => (μ x).toReal) 1 := by
-  have hnetop : ∀ (g : α), μ g ≠ ⊤ := by exact fun g ↦ PMF.apply_ne_top μ g
+  have hnetop : ∀ (g : α), μ g ≠ ⊤ := (fun g ↦ PMF.apply_ne_top μ g)
   have hsum : ∑' (x : α), (μ x) ≠ ⊤ := PMF.tsum_coe_ne_top μ
   have have_sum_real :
   HasSum (fun (x : α) => (μ x).toReal) (∑' (x : α), (μ x).toReal) := ENNReal.hasSum_toReal hsum
@@ -27,7 +26,6 @@ lemma HasSum_coe_toReal {α : Type*} (μ : PMF α) : HasSum (fun (x : α) => (μ
   rw [h1, μ.tsum_coe] at have_sum_real
   simp only [toReal_one] at have_sum_real
   exact have_sum_real
-
 
 -- Constant functions are harmonic for any measure μ
 example {G : Type*} [Group G] [Countable G] (μ : PMF G) :
@@ -66,7 +64,7 @@ IsHarmonicFunction (PMF.pure 1) f := by
 lemma sum_of_harmonic {G : Type*} [Group G] [Countable G] (μ : PMF G) (f g : G → ℝ)
 (hf : IsHarmonicFunction μ f) (hg : IsHarmonicFunction μ g) : IsHarmonicFunction μ (f + g) := by
   intro x
-  simp only [Pi.add_apply]; ring
+  simp only [Pi.add_apply]; ring_nf
   apply HasSum.add (hf x) (hg x)
 
 -- Multiplication by a constant preserves harmonicity
@@ -74,7 +72,6 @@ lemma sum_of_harmonic {G : Type*} [Group G] [Countable G] (μ : PMF G) (f g : G 
 lemma mul_by_const_harmonic {G : Type*} [Group G] [Countable G] (μ : PMF G) (c : ℝ) (f : G → ℝ)
 (hf : IsHarmonicFunction μ f) : IsHarmonicFunction μ (fun g => c * f g) := by
   intro x
-  simp only;
   simp only [mul_comm, mul_assoc]
   apply HasSum.mul_left
   specialize hf x
@@ -86,20 +83,12 @@ lemma mul_by_const_harmonic {G : Type*} [Group G] [Countable G] (μ : PMF G) (c 
 def pmf_conv {G : Type*} [Group G] [Countable G] (μ ν : PMF G) : PMF G :=
   μ.bind (fun x => ν.map (fun (y : G) => x * y))
 
-def iteratedConv {G : Type*} [Group G] [Countable G] (μ : PMF G) : ℕ → PMF G
-  | 0 => PMF.pure 1
-  | n + 1 => pmf_conv μ (iteratedConv μ n)
-
--- TODO: finish the proof of the fact that if a function is harmonic wrt μ and ν,
--- it is harmonic wrt the convolution. Requires Fubini's therorem for PMF measures it seems?
-/- open Classical in
-lemma harmonic_pmf_conv {G : Type*} [Group G] [Countable G] (μ ν : PMF G) (f : G → ℝ)
-(hmu : IsHarmonicFunction μ f) (hnu : IsHarmonicFunction ν f) :
-IsHarmonicFunction (pmf_conv μ ν) f := by
-  intro x
+open Classical in
+lemma pmf_conv_eq {G : Type*} [Group G] [Countable G] (μ ν : PMF G) :
+    ∀ g, ∑' (h : G), (μ h) * (ν (h⁻¹ * g)) = (pmf_conv μ ν) g := by
+  intro g
   rw [pmf_conv]
-  dsimp;
-  simp only [PMF.map_apply]
+  simp only [PMF.bind_apply, PMF.map_apply]
   have h1 : ∀ (g a : G), ∑' (a_1 : G), (if g = a * a_1 then ν a_1 else 0) = ν (a⁻¹ * g) := by
     intro g a
     rw [tsum_eq_single (a⁻¹ * g)]
@@ -112,30 +101,143 @@ IsHarmonicFunction (pmf_conv μ ν) f := by
     subst h11
     simp_all only [not_true_eq_false]
   simp only [h1]
-  have hdsum : ∀ (x : G),
-  HasSum (fun ((g, a): G × G) => ((μ a) * (ν (a⁻¹ * g))).toReal * f (x * g)) (f x) := by
-    sorry
-  sorry
--/
 
+def iteratedConv {G : Type*} [Group G] [Countable G] (μ : PMF G) : ℕ → PMF G
+  | 0 => PMF.pure 1
+  | n + 1 => pmf_conv μ (iteratedConv μ n)
+
+-- TODO: finish the proof of the fact that if a function is harmonic wrt μ and ν,
+-- it is harmonic wrt the convolution. Requires Fubini's therorem for PMF measures it seems?
+open Classical in
+lemma harmonic_pmf_conv {G : Type*} [Group G] [Countable G] (μ ν : PMF G) (f : G → ℝ)
+(hmu : IsHarmonicFunction μ f) (hnu : IsHarmonicFunction ν f)
+(hsumm : ∀ (x : G), Summable (fun (g : G × G) ↦
+    (μ g.1 * ν (g.1⁻¹ * g.2)).toReal * f (x * g.2))) :
+IsHarmonicFunction (pmf_conv μ ν) f := by
+  intro x
+  simp only [<- pmf_conv_eq μ ν]
+  have h2 : ∀ (g : G), (∑' (a : G), μ a * ν (a⁻¹ * g)).toReal * f (x * g) =
+    ∑' (a : G), ((μ a * ν (a⁻¹ * g)).toReal * f (x * g)) := by
+    intro g
+    calc
+      (∑' (a : G), μ a * ν (a⁻¹ * g)).toReal * f (x * g) =
+        (∑' (a : G), (μ a * ν (a⁻¹ * g)).toReal) * f (x * g) := by
+        simp only [toReal_mul, mul_eq_mul_right_iff]
+        left
+        rw [ENNReal.tsum_toReal_eq]
+        · simp only [toReal_mul]
+        · intro a
+          exact mul_ne_top (PMF.apply_ne_top μ a) (PMF.apply_ne_top ν (a⁻¹ * g))
+      _ = ∑' (a : G), ((μ a * ν (a⁻¹ * g)).toReal * f (x * g)) := by
+        rw [tsum_mul_right]
+  simp only [h2]
+  have hsumm2 : Summable (fun g ↦ ∑' (a : G), (μ a * ν (a⁻¹ * g)).toReal * f (x * g)) := by
+    exact Summable.prod (Summable.prod_symm (hsumm x))
+  rw [Summable.hasSum_iff hsumm2]
+  calc
+    ∑' (b : G) (a : G), (μ a * ν (a⁻¹ * b)).toReal * f (x * b) =
+      ∑' (b : G) (a : G), (μ a).toReal * (ν (a⁻¹ * b)).toReal * f (x * b) := by
+      congr; ext b; congr; ext a;
+      simp only [toReal_mul]
+    _ = ∑' (b : G) (a : G), (μ a).toReal *
+      ((ν (a⁻¹ * b)).toReal * f ((x * a) * (a⁻¹ * b))) := by group
+    _ = ∑' (a : G) (b : G), (μ a).toReal *
+      ((ν (a⁻¹ * b)).toReal * f ((x * a) * (a⁻¹ * b))) := by
+      rw [Summable.tsum_comm]
+      group; simp only [<- toReal_mul];
+      convert (hsumm x)
+      rw [Function.uncurry_apply_pair]
+      simp only [Int.reduceNeg, zpow_neg, zpow_one, toReal_mul]
+    _ = ∑' (a : G), (μ a).toReal *
+      (∑' (b : G), (ν (a⁻¹ * b)).toReal * f ((x * a) * (a⁻¹ * b))) := by
+      congr; ext a;
+      exact tsum_mul_left
+    _ = ∑' (a : G), (μ a).toReal * f (x * a) := by
+      congr; ext a; simp only [mul_eq_mul_left_iff];
+      left
+      rw [<- HasSum.tsum_eq (hnu (x * a))]
+      have : Function.Injective (fun (b : G) => a * b) := by
+        exact mul_right_injective a
+      rw [<- Function.Injective.tsum_eq this]
+      · simp only [inv_mul_cancel_left];
+      · intro g hg1
+        use a⁻¹ * g; group
+    _ = f x := by exact HasSum.tsum_eq (hmu x)
+
+
+open Classical in
+lemma bounded_harmonic_pmf_conv {G : Type*} [Group G] [Countable G] (μ ν : PMF G) (f : G → ℝ)
+(hmu : IsHarmonicFunction μ f) (hnu : IsHarmonicFunction ν f)
+(hbnd : ∃ (C : ℝ), ∀ x, |f x| ≤ C) :
+IsHarmonicFunction (pmf_conv μ ν) f := by
+  rcases hbnd with ⟨C, hbndC⟩
+  have hbnd_meas : ∀ (x : G) (g : G × G),
+    (μ g.1).toReal * (ν (g.1⁻¹ * g.2)).toReal * |f (x * g.2)| ≤
+    (μ g.1).toReal * (ν (g.1⁻¹ * g.2)).toReal * C := by
+    intro x g
+    apply mul_le_mul_of_nonneg_left
+    · exact hbndC (x * g.2)
+    · exact mul_nonneg toReal_nonneg toReal_nonneg
+  have hpos_meas : ∀ (x : G) (b : G × G),
+    0 ≤ (μ b.1).toReal * (ν (b.1⁻¹ * b.2)).toReal * |f (x * b.2)| := by
+    intro x b
+    apply mul_nonneg
+    · exact mul_nonneg ENNReal.toReal_nonneg ENNReal.toReal_nonneg
+    · exact abs_nonneg (f (x * b.2))
+  have hsumm : ∀ y, Summable (fun (g : G × G) ↦
+    (μ g.1 * ν (g.1⁻¹ * g.2)).toReal * f (y * g.2)):= by
+    intro y
+    apply Summable.of_abs
+    simp only [toReal_mul, abs_mul, abs_toReal]
+    apply Summable.of_nonneg_of_le (hpos_meas y) (hbnd_meas y)
+    apply Summable.mul_right
+    simp only [<- ENNReal.toReal_mul]
+    apply ENNReal.summable_toReal
+    rw [ENNReal.tsum_prod']; simp only [ne_eq]
+    simp only [ENNReal.tsum_mul_left]
+    have interm : ∀ (a : G), ∑' (i : G), ν (a⁻¹ * i) = 1 := by
+      intro a
+      rw [le_antisymm_iff]
+      constructor
+      · calc
+          ∑' (i : G), ν (a⁻¹ * i) = ∑' (i : G), ν i := by
+            refine Function.Injective.tsum_eq ?_ ?_
+            · exact mul_right_injective a⁻¹
+            · intro x hx
+              simp only [Set.mem_range]; use (a * x);
+              group
+          _ = 1 := by exact PMF.tsum_coe ν
+          _ ≤ 1 := by rfl
+      · calc
+          1 ≤ 1 := by rfl
+          1 = ∑' (i : G), ν i := by exact Eq.symm (PMF.tsum_coe ν)
+          _ = ∑' (i : G), ν (a⁻¹ * i) := by
+            symm
+            refine Function.Injective.tsum_eq ?_ ?_
+            · exact mul_right_injective a⁻¹
+            · intro x hx
+              simp only [Set.mem_range]; use (a * x);
+              group
+    simp only [interm, mul_one, PMF.tsum_coe, one_ne_top, not_false_eq_true];
+  apply harmonic_pmf_conv μ ν f hmu hnu hsumm
 
 -- I have proven the weaker version of the above when ν = μ
-/-lemma harmonic_iter_conv {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G → ℝ)
-(hf : IsHarmonicFunction μ f): ∀ (n : ℕ), IsHarmonicFunction (iteratedConv μ n) f := by
+lemma bounded_harmonic_iter_conv {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G → ℝ)
+(hf : IsHarmonicFunction μ f) (hbnd : ∃ (C : ℝ), ∀ x, |f x| ≤ C) :
+∀ (n : ℕ), IsHarmonicFunction (iteratedConv μ n) f := by
   intro n
   induction n
   case zero =>
     rw [iteratedConv]
     exact harmonic_delta_measure f
-  case succ ih =>
+  case succ n ih =>
     rw [iteratedConv]
-    apply harmonic_pmf_conv
-    · exact hf
-    exact ih
--/
+    exact bounded_harmonic_pmf_conv μ (iteratedConv μ n) f hf ih hbnd
 
+/-
 lemma iterconv_gives_fullsupport {G : Type*} [Group G] [Finite G] (μ : PMF G)
 (hgen : Subsemigroup.closure μ.support = G) : ∃ (n : ℕ), (iteratedConv μ n).support = G := by sorry
+-/
 
 -- The idea is to prove that we can endow this with the structure of the Banach space and
 -- a convex closed subset of it respectively.
@@ -161,7 +263,7 @@ lemma harmonic_max_eq_neighbors {G : Type*} [Group G] [Countable G] (μ : PMF G)
         have := hhar x;
         rw [ tsum_mul_right, this.tsum_eq, sub_eq_zero ];
         rw [ show ( ∑' g : G, ( μ g |> ENNReal.toReal ) ) = 1 by
-          exact HasSum.tsum_eq ( by exact? ) ] ; simp +decide;
+          exact HasSum.tsum_eq (HasSum_coe_toReal μ) ] ; simp +decide;
       simp only [ mul_sub ];
       rw [ Summable.tsum_sub, hsum_zero ];
       · refine' Summable.mul_right _ _;

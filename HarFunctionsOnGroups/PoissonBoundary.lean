@@ -10,6 +10,5 @@ import Mathlib.MeasureTheory.Function.LpSpace.Basic
 
 noncomputable section
 
-structure MeasuredGroup {G : Type*} [Group G] [TopologicalSpace G] [IsDiscrete G]
-[MeasurableSpace G] [BorelSpace G] where
-  prob : (μ : MeasureTheory.Measure G) [MeasureTheory.IsProbabilityMeasure μ]
+namespace PoissonBoundary
+

@@ -11,6 +11,9 @@ import Mathlib.Topology.Algebra.InfiniteSum.Module
 noncomputable section
 
 open ENNReal
+
+namespace HarmonicPMF
+
 -- Definition of a harmonic function, we require the convex
 -- combination ∑ μ g f (x * g) to converge to f x for every x ∈ G
 def IsHarmonicFunction {G : Type*} [Group G] [Countable G] (μ : PMF G) (f : G → ℝ) : Prop :=
@@ -375,3 +378,5 @@ theorem FiniteGroupsAreLiuoville {G : Type*} [Group G] [Finite G] (μ : PMF G) (
   have hh11 : ∑' (g : G), (μ g).toReal * f (gₘ * g) = f gₘ := HasSum.tsum_eq (hhar gₘ)
   rw [hh11] at contr_ineq
   exact (lt_self_iff_false |f gₘ|).mp contr_ineq
+
+end HarmonicPMF

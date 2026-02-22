@@ -14,6 +14,8 @@ variable {G : Type*} [AddCommGroup G] [TopologicalSpace G]
 [MeasurableSpace G]
 [BorelSpace G] [IsTopologicalAddGroup G]
 
+namespace ChoquetDenyTheorems
+
 -- Lemma : if a bounded sequence has differences of consequtive elements
 -- bounded from below by a non-negative b then b = 0
 lemma unif_bounded_diff (a : ℕ → ℝ) (b : ℝ) (abnd : ∃ C, ∀ n, |a n| ≤ C)
@@ -903,10 +905,4 @@ theorem ChoquetDeny [SecondCountableTopology G] (μ : MeasureTheory.Measure G)
       _ = 4 * |C| * |C| := by ring
       _ = |4| * |C| * |C| := by simp
 
-
-/-
-theorem ChoquetDenyPMF {G : Type*} [CommGroup G] [TopologicalSpace G] [DiscreteTopology G]
-  [Countable G] (μ : PMF G) (f : G → ℝ)
-(hhar : f ∈ BoundedHarmonicFunctions μ) (hgen : Subgroup.closure μ.support = G) :
-∀ (x y : G), f x = f y := by sorry
--/
+end ChoquetDenyTheorems
